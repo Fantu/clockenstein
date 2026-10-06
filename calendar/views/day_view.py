@@ -1,7 +1,6 @@
 import datetime
 from typing import Callable
 
-import babel.core
 import babel.dates
 import gi
 gi.require_version("Gtk", "3.0")
@@ -10,7 +9,7 @@ from xapp.util import l10n
 
 _ = l10n("clockenstein")
 
-from clockenstein.formatting import capitalize_first, format_time
+from clockenstein.formatting import capitalize_first, default_time_locale, format_time
 from views.colors import apply_tinted_event_color
 from views.month_view import _event_has_ended
 
@@ -125,7 +124,7 @@ class DayView(Gtk.Box):
 
     def update(self, current_date: datetime.date, events: list[dict]):
         self.current_date = current_date
-        locale_name = babel.core.default_locale(("LC_ALL", "LC_TIME", "LANG"))
+        locale_name = default_time_locale()
         date_text = babel.dates.format_date(current_date, format="full", locale=locale_name)
         self.date_label.set_text(capitalize_first(date_text))
         day_events = [clicked_event for clicked_event in events
