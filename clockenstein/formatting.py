@@ -1,5 +1,6 @@
 import datetime
 import locale
+import os
 import re
 
 import babel.core
@@ -11,10 +12,20 @@ _ = l10n("clockenstein")
 WEEKDAY_NAMES = (_("MON"), _("TUE"), _("WED"), _("THU"), _("FRI"), _("SAT"), _("SUN"))
 
 
+def default_time_locale():
+    """Return the Babel locale name for dates and times."""
+    category = None
+    for name in ("LC_ALL", "LC_TIME", "LANG"):
+        if os.getenv(name):
+            category = name
+            break
+    return babel.core.default_locale(category)
+
+
 def locale_first_weekday():
     """Return the locale's first weekday using Python's Monday-based index."""
     try:
-        locale_name = babel.core.default_locale(("LC_ALL", "LC_TIME", "LANG"))
+        locale_name = default_time_locale()
         return babel.core.Locale.parse(locale_name).first_week_day
     except (babel.core.UnknownLocaleError, TypeError, ValueError):
         return 0

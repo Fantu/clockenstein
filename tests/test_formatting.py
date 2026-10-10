@@ -1,4 +1,5 @@
 import datetime
+import os
 import sys
 import unittest
 from pathlib import Path
@@ -6,7 +7,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from clockenstein.formatting import format_time
+from clockenstein.formatting import default_time_locale, format_time
 
 
 class TimeFormattingTests(unittest.TestCase):
@@ -26,6 +27,27 @@ class TimeFormattingTests(unittest.TestCase):
         value = datetime.time(13, 5, 42)
         self.assertEqual(format_time(value, "12-hour"), "1:05 PM")
         self.assertEqual(format_time(value, "24-hour"), "13:05")
+
+
+class TimeLocaleTests(unittest.TestCase):
+    def test_lc_all_overrides_lc_time(self):
+        env = {"LC_ALL": "fr_FR.UTF-8", "LC_TIME": "de_DE.UTF-8", "LANG": "it_IT.UTF-8"}
+        with patch.dict(os.environ, env, clear=True):
+            self.assertEqual(default_time_locale(), "fr_FR")
+
+    def test_lc_time_overrides_lang(self):
+        env = {"LC_TIME": "de_DE.UTF-8", "LANG": "it_IT.UTF-8", "LANGUAGE": "en_US"}
+        with patch.dict(os.environ, env, clear=True):
+            self.assertEqual(default_time_locale(), "de_DE")
+
+    def test_lang_overrides_language(self):
+        env = {"LANG": "it_IT.UTF-8", "LANGUAGE": "en_US"}
+        with patch.dict(os.environ, env, clear=True):
+            self.assertEqual(default_time_locale(), "it_IT")
+
+    def test_c_locale(self):
+        with patch.dict(os.environ, {"LANG": "C.UTF-8"}, clear=True):
+            self.assertEqual(default_time_locale(), "en_US_POSIX")
 
 
 if __name__ == "__main__":
