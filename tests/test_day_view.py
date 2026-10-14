@@ -8,6 +8,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "calendar"))
 
 from views.day_view import (_assign_event_columns, _get_event_label_parts, _minute_to_y,
                             _get_timed_segment_minutes)
+from clockenstein.misc import get_event_last_day, is_event_all_day
 
 
 class DayLayoutTests(unittest.TestCase):
@@ -40,6 +41,31 @@ class DayLayoutTests(unittest.TestCase):
                          (0, 24 * 60))
         self.assertEqual(_get_timed_segment_minutes(event, event["date_end"]),
                          (0, 20 * 60 + 30))
+
+    def test_event_ending_at_midnight_fills_the_rest_of_its_last_day(self):
+        """A midnight end runs the segment to the bottom of the previous day."""
+        event = {
+            "date_start": datetime.date(2026, 8, 20),
+            "date_end": datetime.date(2026, 8, 21),
+            "time_start": datetime.time(22),
+            "time_end": datetime.time.min,
+        }
+        self.assertEqual(get_event_last_day(event), event["date_start"])
+        self.assertFalse(is_event_all_day(event))
+        self.assertEqual(_get_timed_segment_minutes(event, event["date_start"]),
+                         (22 * 60, 24 * 60))
+
+    def test_midnight_to_midnight_event_presents_as_all_day(self):
+        """Whole local days present as all-day, but an instant at midnight doesn't."""
+        event = {
+            "date_start": datetime.date(2026, 8, 20),
+            "date_end": datetime.date(2026, 8, 21),
+            "time_start": datetime.time.min,
+            "time_end": datetime.time.min,
+        }
+        self.assertTrue(is_event_all_day(event))
+        self.assertEqual(get_event_last_day(event), event["date_start"])
+        self.assertFalse(is_event_all_day({**event, "date_end": event["date_start"]}))
 
     def test_day_event_label_orders_title_time_and_location(self):
         """Day-view card content presents title, time, then location."""

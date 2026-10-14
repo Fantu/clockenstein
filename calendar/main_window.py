@@ -17,6 +17,7 @@ from clockenstein import (AGENT_BUS_NAME, BUS_INTERFACE, BUS_NAME, BUS_PATH,
 from clockenstein.drawing import draw_centered_circle
 from clockenstein.formatting import (capitalize_first, format_time, resolve_first_weekday,
                         start_of_week)
+from clockenstein.misc import get_event_last_day, is_event_all_day
 from dbus import notify_changed
 from store import CalendarManager, local_timezone, watch_timezone_changes
 from views.colors import apply_tinted_event_color
@@ -435,7 +436,7 @@ class MainWindow(Gtk.Window):
             start_time = event.get("time_start")
             if start_date < today:
                 continue
-            if start_date == today and not event.get("all_day"):
+            if start_date == today and not is_event_all_day(event):
                 if start_time is None or start_time < now.time():
                     continue
             upcoming.append(event)
@@ -465,11 +466,12 @@ class MainWindow(Gtk.Window):
         button = Gtk.Button()
         button.set_relief(Gtk.ReliefStyle.NONE)
         button.get_style_context().add_class("clockenstein-upcoming-row")
-        if event.get("all_day"):
+        all_day = is_event_all_day(event)
+        if all_day:
             apply_tinted_event_color(button, event)
         button.connect("clicked", lambda _button: self._on_event_activated(event))
         content = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
-        if not event.get("all_day"):
+        if not all_day:
             swatch = Gtk.DrawingArea()
             swatch.set_size_request(10, 10)
             swatch.set_valign(Gtk.Align.START)
@@ -483,7 +485,7 @@ class MainWindow(Gtk.Window):
         title.set_ellipsize(Pango.EllipsizeMode.END)
         title.get_style_context().add_class("clockenstein-upcoming-title")
         parts = [capitalize_first(event["date_start"].strftime("%A %-d %b"))] if show_date else []
-        if not event.get("all_day") and event.get("time_start"):
+        if not all_day:
             parts.append(format_time(event["time_start"], self.time_format))
         when = " · ".join(parts)
         if when:
@@ -1412,7 +1414,7 @@ class MainWindow(Gtk.Window):
         start, end = self._get_date_range()
         all_events = self._get_available_events()
         events = [event for event in all_events
-                  if event["date_end"] >= start and event["date_start"] <= end]
+                  if get_event_last_day(event) >= start and event["date_start"] <= end]
         self.month_view.update(self.current_date, events, self._month_week_offset,
                                self._month_selected_date)
         self.week_view.update(self.current_date, events, self._week_selected_date)

@@ -58,6 +58,19 @@ class NotificationSchedulerTests(unittest.TestCase):
         start = DAEMON._get_event_start(event, ZoneInfo("Europe/Dublin"))
         self.assertEqual(start.isoformat(), "2026-09-09T17:45:00+01:00")
 
+    def test_midnight_to_midnight_event_is_exported_as_all_day(self):
+        daemon = object.__new__(DAEMON.ClockensteinDaemon)
+        daemon.timezone = ZoneInfo("UTC")
+        event = {"uid": "one", "date_start": datetime.date(2026, 10, 13),
+                 "date_end": datetime.date(2026, 10, 14), "all_day": False,
+                 "time_start": datetime.time.min, "time_end": datetime.time.min}
+        _uid, _color, _summary, all_day, start, end, _modified = daemon._get_event_tuple(event)
+        self.assertTrue(all_day)
+        self.assertEqual(end - start, 24 * 60 * 60)
+        midnight = datetime.datetime.combine(event["date_start"], datetime.time.min, daemon.timezone)
+        self.assertEqual(DAEMON._get_due_notifications(
+            [event], midnight - datetime.timedelta(minutes=20), midnight, 15, daemon.timezone), [])
+
     def test_global_lead_time_applies_to_every_event(self):
         tz = datetime.datetime.now().astimezone().tzinfo
         event_start = datetime.datetime.now(tz).replace(second=0, microsecond=0) \

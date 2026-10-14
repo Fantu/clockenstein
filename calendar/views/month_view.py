@@ -11,6 +11,7 @@ _ = l10n("clockenstein")
 
 from clockenstein.formatting import format_time, ordered_weekday_names, start_of_week
 from clockenstein.drawing import draw_centered_circle
+from clockenstein.misc import get_event_last_day, is_event_all_day
 from clockenstein import DEFAULT_COLOR
 from views.colors import apply_tinted_event_color
 
@@ -146,13 +147,13 @@ class MonthView(Gtk.Box):
         used_lanes = [0] * 6
         hidden_by_date = {}
         def get_sort_key(event):
-            duration_days = (event["date_end"] - event["date_start"]).days
+            duration_days = (get_event_last_day(event) - event["date_start"]).days
             # Place longer events first when they start on the same day.
             return event["date_start"], -duration_days
 
         for event in sorted(events, key=get_sort_key):
             segment_start = max(event["date_start"], grid_start)
-            visible_end = min(event["date_end"], grid_end)
+            visible_end = min(get_event_last_day(event), grid_end)
             while segment_start <= visible_end:
                 offset = (segment_start - grid_start).days
                 row, col = divmod(offset, 7)
@@ -299,8 +300,8 @@ class _DayCell(Gtk.EventBox):
 class _SpanPill(Gtk.EventBox):
     def __init__(self, event, on_event, show_accent, time_format):
         super().__init__()
-        single_timed = (not event.get("all_day") and
-                        event.get("date_end", event["date_start"]) == event["date_start"])
+        single_timed = (not is_event_all_day(event) and
+                        get_event_last_day(event) == event["date_start"])
         self.get_style_context().add_class("clockenstein-event-pill")
         self.get_style_context().add_class("clockenstein-event-span")
         if single_timed:
@@ -343,7 +344,7 @@ class _SpanPill(Gtk.EventBox):
 def _get_event_tooltip(event, time_format="locale"):
     title = GLib.markup_escape_text(event.get("summary") or _("Untitled"))
     properties = []
-    if event.get("time_start") and not event.get("all_day"):
+    if not is_event_all_day(event):
         properties.append(format_time(event["time_start"], time_format))
     if event.get("location"):
         properties.append(str(event["location"]))

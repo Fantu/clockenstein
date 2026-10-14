@@ -19,7 +19,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 from clockenstein import BUS_INTERFACE, BUS_NAME, BUS_PATH, DEFAULT_COLOR, SETTINGS_SCHEMA
 from clockenstein.alarms import AlarmStore, due_alarms
 from clockenstein.logging import Logger
-from clockenstein.misc import get_calendar_key
+from clockenstein.misc import get_calendar_key, get_event_last_day, is_event_all_day
 from backends.google import LIMITED_RANGE, NORMAL_RANGE, RESTRICTED_RANGE
 from store import CalendarManager, local_timezone, watch_timezone_changes
 
@@ -229,11 +229,11 @@ class ClockensteinDaemon:
         self.alarm_records = self.alarms.list()
 
     def _get_event_tuple(self, event):
-        all_day = bool(event.get("all_day"))
+        all_day = is_event_all_day(event)
         start_time = event.get("time_start") or datetime.time.min
         start = datetime.datetime.combine(event["date_start"], start_time, self.timezone)
         if all_day:
-            end_date = event.get("date_end", event["date_start"]) + datetime.timedelta(days=1)
+            end_date = get_event_last_day(event) + datetime.timedelta(days=1)
             end = datetime.datetime.combine(end_date, datetime.time.min, self.timezone)
         else:
             end_time = event.get("time_end") or start_time
@@ -422,7 +422,7 @@ def _get_due_notifications(events, since, until, minutes, timezone):
         return []
     due = []
     for event in events:
-        if event.get("all_day"):
+        if is_event_all_day(event):
             continue
         start = _get_event_start(event, timezone)
         trigger = start - datetime.timedelta(minutes=minutes)

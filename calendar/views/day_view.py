@@ -10,6 +10,7 @@ from xapp.util import l10n
 _ = l10n("clockenstein")
 
 from clockenstein.formatting import capitalize_first, default_time_locale, format_time
+from clockenstein.misc import get_event_last_day, is_event_all_day
 from views.colors import apply_tinted_event_color
 from views.month_view import _event_has_ended
 
@@ -128,14 +129,14 @@ class DayView(Gtk.Box):
         date_text = babel.dates.format_date(current_date, format="full", locale=locale_name)
         self.date_label.set_text(capitalize_first(date_text))
         day_events = [clicked_event for clicked_event in events
-                      if clicked_event["date_start"] <= current_date <= clicked_event.get("date_end", clicked_event["date_start"])]
+                      if clicked_event["date_start"] <= current_date <= get_event_last_day(clicked_event)]
 
         for layer in (self.all_day_event_layer, self.event_layer):
             for child in layer.get_children():
                 layer.remove(child)
         self._positioned_events = []
         for event in day_events:
-            full_day_column = event["all_day"] or event["time_start"] is None
+            full_day_column = is_event_all_day(event)
             if full_day_column:
                 start_minutes = DAY_START_MINUTE
                 end_minutes = DAY_END_MINUTE
@@ -311,10 +312,10 @@ def _get_timed_segment_minutes(event, day):
 def _get_initial_scroll_minute(events, days, include_now):
     relevant = []
     for event in events:
-        if event.get("all_day") or event.get("time_start") is None:
+        if is_event_all_day(event):
             continue
         for day in days:
-            if event["date_start"] <= day <= event.get("date_end", event["date_start"]):
+            if event["date_start"] <= day <= get_event_last_day(event):
                 start, _end = _get_timed_segment_minutes(event, day)
                 relevant.append(start)
     if include_now:

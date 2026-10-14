@@ -12,6 +12,7 @@ import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "calendar"))
 
 from clockenstein.calendars import CalendarDatabase
+from clockenstein.misc import get_event_last_day
 from backends.google import GoogleBackend
 from backends.caldav import CalDAVBackend, _get_event_ical
 from store import LocalStore
@@ -122,6 +123,20 @@ class CalendarDatabaseTests(unittest.TestCase):
         self.assertEqual(events["timed"]["date_start"], START + datetime.timedelta(days=1))
         self.assertEqual(events["timed"]["time_start"], datetime.time(0, 30))
         self.assertEqual(events["event"]["date_start"], START)
+
+    def test_timed_event_ending_at_midnight_does_not_occupy_next_day(self):
+        next_day = START + datetime.timedelta(days=1)
+        for uid, time_start in (("whole", datetime.time.min), ("late", datetime.time(22))):
+            timed = {**event(uid), "all_day": False, "date_end": next_day,
+                     "time_start": time_start, "time_end": datetime.time.min}
+            self.client.save_event("google", "account", "work", timed, UTC)
+        for saved in self.client.get_events("google", UTC):
+            self.assertFalse(saved["all_day"])
+            self.assertEqual(saved["date_end"], next_day)
+            self.assertEqual(get_event_last_day(saved), START)
+        self.assertEqual(self.client.get_events("google", UTC, next_day), [])
+        shifted = {e["uid"]: e for e in self.client.get_events("google", ZoneInfo("Europe/Dublin"))}
+        self.assertEqual(get_event_last_day(shifted["whole"]), next_day)
 
     def test_three_processes_create_events_without_losing_any(self):
         LocalStore(UTC, self.path)

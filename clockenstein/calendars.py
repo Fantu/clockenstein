@@ -6,6 +6,8 @@ import uuid
 from contextlib import contextmanager
 from pathlib import Path
 
+from clockenstein.misc import get_event_last_day
+
 
 class CalendarDatabase:
     """Shared calendar records. Each write changes only the records it owns."""
@@ -181,7 +183,7 @@ class CalendarDatabase:
             result = []
             for row in connection.execute(query, parameters):
                 event = self._get_event_from_row(row, timezone)
-                if start and event["date_end"] < start:
+                if start and get_event_last_day(event) < start:
                     continue
                 if end and event["date_start"] > end:
                     continue

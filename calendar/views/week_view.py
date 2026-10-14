@@ -9,6 +9,7 @@ from xapp.util import l10n
 _ = l10n("clockenstein")
 
 from clockenstein.formatting import WEEKDAY_NAMES, format_time, start_of_week
+from clockenstein.misc import get_event_last_day, is_event_all_day
 from views.colors import apply_tinted_event_color
 from views.month_view import _activate_event, _event_has_ended, _get_event_tooltip
 from views.day_view import (ALL_DAY_EVENT_MARGIN, ALL_DAY_HEIGHT, HOUR_HEIGHT,
@@ -153,7 +154,7 @@ class WeekView(Gtk.Box):
         by_date: dict[datetime.date, list[dict]] = {}
         for event in events:
             day = event["date_start"]
-            while day <= event.get("date_end", day):
+            while day <= get_event_last_day(event):
                 by_date.setdefault(day, []).append(event)
                 day += datetime.timedelta(days=1)
 
@@ -166,10 +167,8 @@ class WeekView(Gtk.Box):
                 column.is_today = day == self.today
                 column.is_selected = day == self.selected_date
             day_events = by_date.get(day, [])
-            all_day_events = [event for event in day_events
-                              if event["all_day"] or event["time_start"] is None]
-            timed_events = [event for event in day_events
-                            if not event["all_day"] and event["time_start"] is not None]
+            all_day_events = [event for event in day_events if is_event_all_day(event)]
+            timed_events = [event for event in day_events if not is_event_all_day(event)]
             all_day_col.set_events(day, all_day_events)
             col.set_events(day, timed_events)
             has_events = bool(day_events)
@@ -308,7 +307,7 @@ class _DayColumn(Gtk.Overlay):
         self._positioned_events = []
 
         for event in events:
-            full_day = event["all_day"] or event["time_start"] is None
+            full_day = is_event_all_day(event)
             if full_day:
                 start_minutes, end_minutes = DAY_START_MINUTE, DAY_END_MINUTE
             else:
